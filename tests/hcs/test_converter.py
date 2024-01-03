@@ -215,4 +215,3 @@ def test_provide_client(tmp_dir, plate_acquisition, hcs_plate):
         client=Client(),
     )
     assert converter._client is not None
-    assert converter._cluster_factory is None

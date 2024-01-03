@@ -9,13 +9,11 @@ class LocalClusterFactory:
         self,
         n_workers: int = None,
         threads_per_worker: int = None,
-        processes: bool = None,
         memory_limit: str = None,
         local_directory: str = None,
     ):
         self.n_workers = n_workers
         self.threads_per_worker = threads_per_worker
-        self.processes = processes
         self.memory_limit = memory_limit
         self.local_directory = local_directory
         self._queue = Queue(1)
@@ -27,7 +25,6 @@ class LocalClusterFactory:
                 self._queue,
                 self.n_workers,
                 self.threads_per_worker,
-                self.processes,
                 self.memory_limit,
                 self.local_directory,
             ),
@@ -61,7 +58,6 @@ class LocalClusterFactory:
         queue: Queue,
         n_workers: int,
         threads_per_worker: int,
-        processes: bool,
         memory_limit: str,
         local_directory: str,
     ):
@@ -75,7 +71,7 @@ class LocalClusterFactory:
         client = distributed.Client(
             n_workers=n_workers,
             threads_per_worker=threads_per_worker,
-            processes=processes,
+            processes=True,
             memory_limit=memory_limit,
             local_directory=local_directory,
         )

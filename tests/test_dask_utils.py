@@ -9,7 +9,6 @@ def test_local_cluster_factory(tmp_path_factory):
     fac = LocalClusterFactory(
         n_workers=1,
         threads_per_worker=1,
-        processes=True,
         memory_limit="1GB",
         local_directory=str(tmp_path_factory.mktemp("dask")),
     )
@@ -46,7 +45,6 @@ def test__start_local_cluster(tmp_path_factory):
             queue,
             1,
             1,
-            True,
             "1GB",
             str(tmp_path_factory.mktemp("dask")),
         ),

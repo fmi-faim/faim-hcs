@@ -13,7 +13,6 @@ from ome_zarr.scale import Scaler
 from ome_zarr.writer import write_image, write_plate_metadata, write_well_metadata
 from pydantic import BaseModel
 
-from faim_hcs.dask_utils import LocalClusterFactory
 from faim_hcs.hcs.acquisition import PlateAcquisition
 from faim_hcs.hcs.plate import PlateLayout, get_rows_and_columns
 from faim_hcs.stitching import stitching_utils
@@ -38,7 +37,6 @@ class ConvertToNGFFPlate:
         self,
         ngff_plate: NGFFPlate,
         yx_binning: int = 1,
-        stitching_yx_chunk_size_factor: int = 1,
         warp_func: Callable = stitching_utils.translate_tiles_2d,
         fuse_func: Callable = stitching_utils.fuse_mean,
         client: Client = None,
@@ -50,9 +48,6 @@ class ConvertToNGFFPlate:
             NGFF plate information.
         yx_binning :
             YX binning factor.
-        stitching_yx_chunk_size_factor :
-            Stitching chunk size factor. Increasing this will increase the
-            memory usage, but reduce the dask computation graph size.
         warp_func :
             Function used to warp tile images.
         fuse_func :
@@ -63,21 +58,11 @@ class ConvertToNGFFPlate:
         assert (
             isinstance(yx_binning, int) and yx_binning >= 1
         ), "yx_binning must be an integer >= 1."
-        assert (
-            isinstance(stitching_yx_chunk_size_factor, int)
-            and stitching_yx_chunk_size_factor >= 1
-        ), "dask_chunk_size_factor must be an integer >= 1."
         self._ngff_plate = ngff_plate
         self._yx_binning = yx_binning
-        self._stitching_yx_chunk_size_factor = stitching_yx_chunk_size_factor
         self._warp_func = warp_func
         self._fuse_func = fuse_func
-        if client is None:
-            self._cluster_factory = LocalClusterFactory()
-            self._client = self._cluster_factory.get_client()
-        else:
-            self._cluster_factory = None
-            self._client = client
+        self._client = client or Client()
 
     def _create_zarr_plate(self, plate_acquisition: PlateAcquisition) -> zarr.Group:
         plate_path = join(self._ngff_plate.root_dir, self._ngff_plate.name + ".zarr")
@@ -114,7 +99,7 @@ class ConvertToNGFFPlate:
         chunks: Union[tuple[int, int], tuple[int, int, int]] = (2048, 2048),
         max_layer: int = 3,
         storage_options: dict = None,
-        process_wells_sequentially: bool = False,
+        buffer_size: int = None,
     ) -> zarr.Group:
         """
         Convert a plate acquisition to an NGFF plate.
@@ -140,58 +125,73 @@ class ConvertToNGFFPlate:
             zarr.Group of the plate.
         """
         assert 2 <= len(chunks) <= 3, "Chunks must be 2D or 3D."
-        well_futures = []
         plate = self._create_zarr_plate(plate_acquisition)
         well_acquisitions = plate_acquisition.get_well_acquisitions(wells)
+        buffer_size = buffer_size or len(well_acquisitions)
         max_priority = len(well_acquisitions) + 1
-        for i, well_acquisition in enumerate(well_acquisitions):
-            well_group = self._create_well_group(
-                plate,
-                well_acquisition,
-                well_sub_group,
+        current_compute_graph, current_group = self.prepare_computation(
+            chunks=chunks,
+            max_layer=max_layer,
+            plate=plate,
+            plate_acquisition=plate_acquisition,
+            storage_options=storage_options,
+            well_acquisition=well_acquisitions[0],
+            well_sub_group=well_sub_group,
+        )
+
+        future_buffer = [
+            (
+                current_group,
+                self._client.compute(
+                    current_compute_graph,
+                    priority=max_priority,
+                ),
+            )
+        ]
+
+        for i, well_acquisition in enumerate(well_acquisitions[1:]):
+            next_compute_graph, next_group = self.prepare_computation(
+                chunks=chunks,
+                max_layer=max_layer,
+                plate=plate,
+                plate_acquisition=plate_acquisition,
+                storage_options=storage_options,
+                well_acquisition=well_acquisition,
+                well_sub_group=well_sub_group,
             )
 
-            stitched_well_da = self._stitch_well_image(
-                chunks,
-                well_acquisition,
-                output_shape=plate_acquisition.get_common_well_shape(),
-            )
+            if len(future_buffer) >= buffer_size:
+                group, futures = future_buffer.pop(0)
+                wait(futures)
+                del futures
+                print("current graph finished")
+                group.attrs["omero"] = {
+                    "channels": plate_acquisition.get_omero_channel_metadata()
+                }
 
-            output_da = self._bin_yx(stitched_well_da)
-
-            output_da = output_da.squeeze()
-
-            group = well_group[well_sub_group]
-            well_futures.append(
+                group.attrs["acquisition_metadata"] = {
+                    "channels": [
+                        ch_metadata.dict()
+                        for ch_metadata in plate_acquisition.get_channel_metadata().values()
+                    ]
+                }
+            future_buffer.append(
                 (
-                    group,
+                    next_group,
                     self._client.compute(
-                        write_image(
-                            image=output_da,
-                            group=group,
-                            axes=well_acquisition.get_axes(),
-                            storage_options=self._get_storage_options(
-                                storage_options, output_da.shape, chunks
-                            ),
-                            scaler=Scaler(max_layer=max_layer),
-                            coordinate_transformations=well_acquisition.get_coordinate_transformations(
-                                max_layer=max_layer,
-                                yx_binning=self._yx_binning,
-                            ),
-                            compute=process_wells_sequentially,
-                        ),
-                        priority=max_priority - i,
+                        next_compute_graph,
+                        priority=max_priority - i - 1,
                     ),
                 )
             )
 
-        for group, futures in well_futures:
+        while len(future_buffer) > 0:
+            group, futures = future_buffer.pop(0)
             wait(futures)
-
+            del futures
             group.attrs["omero"] = {
                 "channels": plate_acquisition.get_omero_channel_metadata()
             }
-
             group.attrs["acquisition_metadata"] = {
                 "channels": [
                     ch_metadata.dict()
@@ -200,6 +200,45 @@ class ConvertToNGFFPlate:
             }
 
         return plate
+
+    def prepare_computation(
+        self,
+        chunks,
+        max_layer,
+        plate,
+        plate_acquisition,
+        storage_options,
+        well_acquisition,
+        well_sub_group,
+    ):
+        well_group = self._create_well_group(
+            plate,
+            well_acquisition,
+            well_sub_group,
+        )
+        stitched_well_da = self._stitch_well_image(
+            chunks,
+            well_acquisition,
+            output_shape=plate_acquisition.get_common_well_shape(),
+        )
+        output_da = self._bin_yx(stitched_well_da)
+        output_da = output_da.squeeze()
+        group = well_group[well_sub_group]
+        compute_graph = write_image(
+            image=output_da,
+            group=group,
+            axes=well_acquisition.get_axes(),
+            storage_options=self._get_storage_options(
+                storage_options, output_da.shape, chunks
+            ),
+            scaler=Scaler(max_layer=max_layer),
+            coordinate_transformations=well_acquisition.get_coordinate_transformations(
+                max_layer=max_layer,
+                yx_binning=self._yx_binning,
+            ),
+            compute=False,
+        )
+        return compute_graph, group
 
     def _bin_yx(self, image_da):
         if self._yx_binning > 1:
@@ -228,10 +267,7 @@ class ConvertToNGFFPlate:
 
         stitcher = DaskTileStitcher(
             tiles=well_acquisition.get_tiles(),
-            yx_chunk_shape=(
-                chunks[-2] * self._stitching_yx_chunk_size_factor,
-                chunks[-1] * self._stitching_yx_chunk_size_factor,
-            ),
+            yx_chunk_shape=(chunks[-2], chunks[-1]),
             output_shape=output_shape,
             dtype=well_acquisition.get_dtype(),
         )
@@ -287,7 +323,3 @@ class ConvertToNGFFPlate:
             return chunks
         else:
             return (1,) * (len(shape) - len(chunks)) + chunks
-
-    def __del__(self):
-        if self._cluster_factory is not None:
-            self._cluster_factory.__del__()
