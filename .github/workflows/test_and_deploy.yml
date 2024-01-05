@@ -50,6 +50,10 @@ jobs:
         shell: bash -l {0}
         run: conda info
 
+      - name: Install conda dependencies
+        shell: bash -l {0}
+        run: conda install -c conda-forge mobie_utils s3fs=0.4.2 fsspec=2023.6.0
+
       - name: Install dependencies
         shell: bash -l {0}
         run: |
