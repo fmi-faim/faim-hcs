@@ -1,6 +1,8 @@
 from multiprocessing import Process, Queue
 from time import sleep
 
+import numpy as np
+
 
 class LocalClusterFactory:
     """Creates a local dask cluster in a sub-process."""
@@ -91,3 +93,24 @@ class LocalClusterFactory:
             self._client = distributed.Client(self._get_scheduler_address())
 
         return self._client
+
+
+def mean_cast_to(target_dtype):
+    """
+    Wrap np.mean to cast the result to a given dtype.
+    """
+
+    def _mean(
+        a,
+        axis=None,
+        dtype=None,
+        out=None,
+        keepdims=np._NoValue,
+        *,
+        where=np._NoValue,
+    ):
+        return np.mean(
+            a=a, axis=axis, dtype=dtype, out=out, keepdims=keepdims, where=where
+        ).astype(target_dtype)
+
+    return _mean

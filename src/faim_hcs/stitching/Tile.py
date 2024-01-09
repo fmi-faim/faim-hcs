@@ -80,6 +80,24 @@ class Tile:
         Image data
         """
         data = imread(self.path)
+        data = self._apply_background_correction(data)
+        data = self._apply_illumination_correction(data)
+
+        return data
+
+    def _apply_illumination_correction(self, data):
+        dtype = data.dtype
+        if self.illumination_correction_matrix_path is not None:
+            icm = imread(self.illumination_correction_matrix_path)
+            assert icm.shape == data.shape, (
+                f"Illumination correction matrix shape {icm.shape} "
+                f"does not match image shape {data.shape}."
+            )
+            mi, ma = np.iinfo(dtype).min, np.iinfo(dtype).max
+            data = np.clip(data / icm, a_min=mi, a_max=ma).astype(dtype)
+        return data
+
+    def _apply_background_correction(self, data):
         dtype = data.dtype
         if self.background_correction_matrix_path is not None:
             bgcm = imread(self.background_correction_matrix_path)
@@ -89,14 +107,4 @@ class Tile:
             )
             mi, ma = np.iinfo(dtype).min, np.iinfo(dtype).max
             data = np.clip(data - bgcm, a_min=mi, a_max=ma).astype(dtype)
-
-        if self.illumination_correction_matrix_path is not None:
-            icm = imread(self.illumination_correction_matrix_path)
-            assert icm.shape == data.shape, (
-                f"Illumination correction matrix shape {icm.shape} "
-                f"does not match image shape {data.shape}."
-            )
-            mi, ma = np.iinfo(dtype).min, np.iinfo(dtype).max
-            data = np.clip(data / icm, a_min=mi, a_max=ma).astype(dtype)
-
         return data
