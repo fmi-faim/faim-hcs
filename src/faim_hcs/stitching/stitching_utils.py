@@ -25,6 +25,7 @@ def fuse_linear(warped_tiles: NDArray, warped_masks: NDArray) -> NDArray:
     """
     dtype = warped_tiles.dtype
     if warped_tiles.shape[0] > 1:
+        warped_masks = warped_masks[:, 0]
         weights = np.zeros_like(warped_masks, dtype=np.float32)
         for i, mask in enumerate(warped_masks):
             weights[i] = distance_transform_edt(
@@ -39,6 +40,7 @@ def fuse_linear(warped_tiles: NDArray, warped_masks: NDArray) -> NDArray:
             0,
             1,
         )
+        weights = weights[:, np.newaxis, ...]
     else:
         weights = warped_masks
 
@@ -60,6 +62,7 @@ def fuse_mean(warped_tiles: NDArray, warped_masks: NDArray) -> NDArray:
     -------
     Fused image.
     """
+    warped_masks = warped_masks[:, 0]
     denominator = warped_masks.sum(axis=0)
     weights = np.true_divide(warped_masks, denominator, where=denominator > 0)
     weights = np.clip(
@@ -67,6 +70,7 @@ def fuse_mean(warped_tiles: NDArray, warped_masks: NDArray) -> NDArray:
         0,
         1,
     )
+    weights = weights[:, np.newaxis, ...]
 
     fused_image = np.sum(warped_tiles * weights, axis=0)
     return fused_image.astype(warped_tiles.dtype)
@@ -91,7 +95,7 @@ def fuse_sum(warped_tiles: NDArray, warped_masks: NDArray) -> NDArray:
     return fused_image.astype(warped_tiles.dtype)
 
 
-def translate_tiles_2d(block_info, yx_chunk_shape, dtype, tiles):
+def translate_tiles_2d(block_info, chunk_shape, tiles):
     """
     Translate tiles to their relative position inside the given block.
 
@@ -99,10 +103,8 @@ def translate_tiles_2d(block_info, yx_chunk_shape, dtype, tiles):
     ----------
     block_info :
         da.map_blocks block_info.
-    yx_chunk_shape :
-        shape of the chunk in yx.
-    dtype :
-        dtype of the tiles.
+    chunk_shape :
+        shape of the chunk in zyx.
     tiles :
         list of tiles.
 
@@ -111,14 +113,18 @@ def translate_tiles_2d(block_info, yx_chunk_shape, dtype, tiles):
         translated tiles, translated masks
     """
     array_location = block_info[None]["array-location"]
-    chunk_yx_origin = np.array([array_location[3][0], array_location[4][0]])
+    chunk_zyx_origin = np.array(
+        [array_location[2][0], array_location[3][0], array_location[4][0]]
+    )
     warped_tiles = []
     warped_masks = []
     for tile in tiles:
-        tile_origin = np.array(tile.get_yx_position())
+        tile_origin = np.array(tile.get_zyx_position())
         tile_data = tile.load_data()
-        warped_mask, warped_tile = warp_yx(
-            chunk_yx_origin, tile_data, tile_origin, yx_chunk_shape
+        if tile_data.ndim == 2:
+            tile_data = tile_data[np.newaxis, ...]
+        warped_mask, warped_tile = shift_yx(
+            chunk_zyx_origin, tile_data, tile_origin, chunk_shape
         )
 
         warped_tiles.append(warped_tile)
@@ -127,34 +133,34 @@ def translate_tiles_2d(block_info, yx_chunk_shape, dtype, tiles):
     return np.array(warped_tiles), np.array(warped_masks)
 
 
-def warp_yx(chunk_yx_origin, tile_data, tile_origin, yx_chunk_shape):
-    warped_tile = np.zeros(yx_chunk_shape, dtype=tile_data.dtype)
-    warped_mask = np.zeros(yx_chunk_shape, dtype=bool)
-    shift = tile_origin - chunk_yx_origin
-    if shift[0] < 0:
-        tile_start_y = abs(shift[0])
-        tile_end_y = min(tile_start_y + yx_chunk_shape[0], tile_data.shape[0])
+def shift_yx(chunk_zyx_origin, tile_data, tile_origin, chunk_shape):
+    warped_tile = np.zeros(chunk_shape, dtype=tile_data.dtype)
+    warped_mask = np.zeros(chunk_shape, dtype=bool)
+    yx_shift = (tile_origin - chunk_zyx_origin)[1:]
+    if yx_shift[0] < 0:
+        tile_start_y = abs(yx_shift[0])
+        tile_end_y = min(tile_start_y + chunk_shape[1], tile_data.shape[1])
     else:
         tile_start_y = 0
         tile_end_y = max(
-            0, min(tile_start_y + yx_chunk_shape[0] - shift[0], tile_data.shape[0])
+            0, min(tile_start_y + chunk_shape[1] - yx_shift[0], tile_data.shape[1])
         )
-    if shift[1] < 0:
-        tile_start_x = abs(shift[1])
-        tile_end_x = min(tile_start_x + yx_chunk_shape[1], tile_data.shape[1])
+    if yx_shift[1] < 0:
+        tile_start_x = abs(yx_shift[1])
+        tile_end_x = min(tile_start_x + chunk_shape[2], tile_data.shape[2])
     else:
         tile_start_x = 0
         tile_end_x = min(
-            tile_start_x + yx_chunk_shape[1] - shift[1], tile_data.shape[1]
+            tile_start_x + chunk_shape[2] - yx_shift[1], tile_data.shape[2]
         )
-    tile_data = tile_data[tile_start_y:tile_end_y, tile_start_x:tile_end_x]
+    tile_data = tile_data[:, tile_start_y:tile_end_y, tile_start_x:tile_end_x]
     if tile_data.size > 0:
-        start_y = max(0, shift[0])
-        end_y = start_y + tile_data.shape[0]
-        start_x = max(0, shift[1])
-        end_x = start_x + tile_data.shape[1]
-        warped_tile[start_y:end_y, start_x:end_x] = tile_data
-        warped_mask[start_y:end_y, start_x:end_x] = True
+        start_y = max(0, yx_shift[0])
+        end_y = start_y + tile_data.shape[1]
+        start_x = max(0, yx_shift[1])
+        end_x = start_x + tile_data.shape[2]
+        warped_tile[..., start_y:end_y, start_x:end_x] = tile_data
+        warped_mask[..., start_y:end_y, start_x:end_x] = True
     return warped_mask, warped_tile
 
 
@@ -186,18 +192,16 @@ def assemble_chunk(
     tiles = tile_map[chunk_location]
 
     if len(tiles) > 0:
-        warped_tiles, warped_masks = warp_func(
-            block_info, chunk_shape[-2:], dtype, tiles
-        )
+        warped_tiles, warped_masks = warp_func(block_info, chunk_shape[-3:], tiles)
 
         if len(tiles) > 1:
             stitched_img = fuse_func(
                 warped_tiles,
                 warped_masks,
             )
-            stitched_img = stitched_img[np.newaxis, np.newaxis, np.newaxis, ...]
+            stitched_img = stitched_img[np.newaxis, np.newaxis, ...]
         else:
-            stitched_img = warped_tiles[np.newaxis, np.newaxis, ...]
+            stitched_img = warped_tiles[np.newaxis, ...]
     else:
         stitched_img = np.zeros(chunk_shape, dtype=dtype)
 

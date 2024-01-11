@@ -8,6 +8,7 @@ import zarr
 from distributed import Client, LocalCluster
 from numcodecs import Blosc
 
+from faim_hcs import dask_utils
 from faim_hcs.hcs.acquisition import TileAlignmentOptions
 from faim_hcs.hcs.cellvoyager import StackAcquisition
 from faim_hcs.hcs.converter import ConvertToNGFFPlate, NGFFPlate
@@ -126,7 +127,7 @@ def test__get_storage_options():
 
 
 def test__mean_cast_to():
-    mean_cast_to = ConvertToNGFFPlate._mean_cast_to(np.uint8)
+    mean_cast_to = dask_utils.mean_cast_to(np.uint8)
     input = np.array([1.0, 2.0], dtype=np.float32)
     assert input.dtype == np.float32
     assert mean_cast_to(input).dtype == np.uint8

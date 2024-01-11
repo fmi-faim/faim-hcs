@@ -1,6 +1,6 @@
 from copy import copy
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import numpy as np
 from dask import array as da
@@ -18,7 +18,7 @@ class DaskTileStitcher:
     def __init__(
         self,
         tiles: list[Tile],
-        yx_chunk_shape: tuple[int, int],
+        chunk_shape: Union[tuple[int, int], tuple[int, int, int]],
         output_shape: Optional[tuple[int, int, int, int, int]] = None,
         dtype: np.dtype = np.uint16,
     ):
@@ -27,8 +27,8 @@ class DaskTileStitcher:
         ----------
         tiles :
             Tiles to stitch.
-        yx_chunk_shape :
-            Chunk shape in y and x.
+        chunk_shape :
+            Chunk shape in (Z)YX.
         output_shape :
             Shape of the output image. If None, the shape is computed from the tiles.
         dtype :
@@ -36,11 +36,7 @@ class DaskTileStitcher:
         """
         self.tiles: list[Tile] = stitching_utils.shift_to_origin(tiles)
 
-        self.chunk_shape = (
-            1,
-            1,
-            1,
-        ) + yx_chunk_shape
+        self.chunk_shape = (1,) * (5 - len(chunk_shape)) + chunk_shape
         self.dtype = dtype
 
         if output_shape is None:

@@ -300,12 +300,23 @@ class ConvertToNGFFPlate:
     ):
         from faim_hcs.stitching import DaskTileStitcher
 
-        stitcher = DaskTileStitcher(
-            tiles=well_acquisition.get_tiles(),
-            yx_chunk_shape=(
+        tile_data_ndims = well_acquisition.get_tiles()[0].load_data().ndim
+        if tile_data_ndims == 2:
+            chunk_shape = (
                 chunks[-2],
                 chunks[-1],
-            ),
+            )
+        elif tile_data_ndims == 3:
+            chunk_shape = (
+                chunks[-3],
+                chunks[-2],
+                chunks[-1],
+            )
+        else:
+            raise NotImplementedError("Tile data must be 2D or 3D.")
+        stitcher = DaskTileStitcher(
+            tiles=well_acquisition.get_tiles(),
+            chunk_shape=chunk_shape,
             output_shape=output_shape,
             dtype=well_acquisition.get_dtype(),
         )

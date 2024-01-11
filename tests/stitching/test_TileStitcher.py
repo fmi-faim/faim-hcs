@@ -48,7 +48,7 @@ def test_block_to_tile_map(tiles):
     """
     ts = DaskTileStitcher(
         tiles=tiles,
-        yx_chunk_shape=(10, 10),
+        chunk_shape=(10, 10),
     )
 
     assert ts._shape == (1, 1, 1, 20, 20)
@@ -66,7 +66,7 @@ def test_block_to_tile_map_large_chunks(tiles):
     """
     ts = DaskTileStitcher(
         tiles=tiles,
-        yx_chunk_shape=(15, 15),
+        chunk_shape=(15, 15),
     )
 
     assert ts._shape == (1, 1, 1, 20, 20)
@@ -89,7 +89,7 @@ def test_block_to_tile_map_small_chunks(tiles):
     """
     ts = DaskTileStitcher(
         tiles=tiles,
-        yx_chunk_shape=(8, 8),
+        chunk_shape=(8, 8),
     )
 
     assert ts._shape == (1, 1, 1, 20, 20)
@@ -111,7 +111,7 @@ def test_block_to_tile_map_small_chunks(tiles):
 
 
 def test_stitch_exact(tiles):
-    ts = DaskTileStitcher(tiles=tiles, yx_chunk_shape=(7, 7))
+    ts = DaskTileStitcher(tiles=tiles, chunk_shape=(7, 7))
     stitched = ts.get_stitched_image(
         transform_func=stitching_utils.translate_tiles_2d,
         fuse_func=stitching_utils.fuse_sum,
@@ -160,7 +160,7 @@ def overlapping_tiles():
 
 
 def test_stitch_overlapping(overlapping_tiles):
-    ts = DaskTileStitcher(tiles=overlapping_tiles, yx_chunk_shape=(5, 7))
+    ts = DaskTileStitcher(tiles=overlapping_tiles, chunk_shape=(5, 7))
     stitched = ts.get_stitched_image(
         transform_func=stitching_utils.translate_tiles_2d,
         fuse_func=stitching_utils.fuse_sum,
