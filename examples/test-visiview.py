@@ -26,7 +26,7 @@ from faim_hcs.utils import rgb_to_hex, wavelength_to_rgb
 class JohnsonTile(Tile):
     def load_data(self) -> NDArray:
         with TiffFile(self.path) as tif:
-            return tif.asarray(self.position.z)
+            return tif.asarray()
 
 
 class JohnsonWellAcquisition(WellAcquisition):
@@ -238,7 +238,7 @@ def main():
         client=client,
     )
     converter.run(
-        wells=["A01"],  # , "A02", "A03", "A04", "A05"],
+        # wells=["A01"],  # , "A02", "A03", "A04", "A05"],
         plate_acquisition=plate,
         well_sub_group="0",
         chunks=(11, 1024, 1024),
