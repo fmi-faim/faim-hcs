@@ -49,12 +49,12 @@ class PlateAcquisition(ABC):
         DataFrame
             Table of all files in the acquisition.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def _build_well_acquisitions(self, files: pd.DataFrame) -> list["WellAcquisition"]:
         """List of wells."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_well_acquisitions(
         self, selection: Optional[list[str]] = None
@@ -67,7 +67,7 @@ class PlateAcquisition(ABC):
     @abstractmethod
     def get_channel_metadata(self) -> dict[int, ChannelMetadata]:
         """Channel metadata."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_well_names(self, wells: Optional[list[str]] = None) -> Iterable[str]:
         """
@@ -181,7 +181,7 @@ class WellAcquisition(ABC):
     @abstractmethod
     def _assemble_tiles(self) -> list[Tile]:
         """Parse all tiles in the well."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_dtype(self) -> np.dtype:
         """
@@ -228,21 +228,21 @@ class WellAcquisition(ABC):
         """
         Get the axes of the well acquisition.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def get_yx_spacing(self) -> tuple[float, float]:
         """
         Get the yx spacing of the well acquisition.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def get_z_spacing(self) -> Optional[float]:
         """
         Get the z spacing of the well acquisition.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_coordinate_transformations(
         self,

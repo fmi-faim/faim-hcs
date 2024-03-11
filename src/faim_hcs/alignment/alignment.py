@@ -16,7 +16,7 @@ class AbstractAlignment(ABC):
         self._aligned_tiles = self._align(self._unaligned_tiles)
 
     def _align(self, tiles: list[Tile]) -> list[Tile]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_tiles(self) -> list[Tile]:
         return self._aligned_tiles
@@ -57,8 +57,8 @@ class GridAlignment(AbstractAlignment):
             grid_positions_y.add(y_pos)
             grid_positions_x.add(x_pos)
 
-        grid_positions_y = list(sorted(grid_positions_y))
-        grid_positions_x = list(sorted(grid_positions_x))
+        grid_positions_y = sorted(grid_positions_y)
+        grid_positions_x = sorted(grid_positions_x)
         for y_pos in grid_positions_y:
             for x_pos in grid_positions_x:
                 if (y_pos, x_pos) in tile_map.keys():

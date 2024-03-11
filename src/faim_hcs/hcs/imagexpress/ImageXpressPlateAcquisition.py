@@ -75,12 +75,12 @@ class ImageXpressPlateAcquisition(PlateAcquisition):
     @abstractmethod
     def _get_root_re(self) -> re.Pattern:
         """Regular expression for matching the root directory of the acquisition."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def _get_filename_re(self) -> re.Pattern:
         """Regular expression for matching the filename of the acquisition."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _build_well_acquisitions(self, files: pd.DataFrame) -> list[WellAcquisition]:
         wells = []
@@ -99,7 +99,7 @@ class ImageXpressPlateAcquisition(PlateAcquisition):
 
     @abstractmethod
     def _get_z_spacing(self) -> Optional[float]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_channel_metadata(self) -> dict[int, ChannelMetadata]:
         ch_metadata = {}

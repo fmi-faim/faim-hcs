@@ -164,10 +164,10 @@ def test__get_storage_options():
 
 def test__mean_cast_to():
     mean_cast_to = dask_utils.mean_cast_to(np.uint8)
-    input = np.array([1.0, 2.0], dtype=np.float32)
-    assert input.dtype == np.float32
-    assert mean_cast_to(input).dtype == np.uint8
-    assert mean_cast_to(input) == 1
+    input_array = np.array([1.0, 2.0], dtype=np.float32)
+    assert input_array.dtype == np.float32
+    assert mean_cast_to(input_array).dtype == np.uint8
+    assert mean_cast_to(input_array) == 1
 
 
 def test__create_well_group(tmp_dir, plate_acquisition, hcs_plate):
@@ -287,7 +287,7 @@ def test_run(tmp_dir, plate_acquisition, hcs_plate):
         max_layer=2,
         chunks=(1, 2000, 2000),
     )
-    plate.attrs["plate"]["wells"] == [
+    assert plate.attrs["plate"]["wells"] == [
         {"columnIndex": 7, "path": "D/08", "rowIndex": 3},
         {"columnIndex": 2, "path": "E/03", "rowIndex": 4},
         {"columnIndex": 7, "path": "F/08", "rowIndex": 5},
@@ -335,7 +335,11 @@ def test_run_selection(tmp_dir, plate_acquisition, hcs_plate):
         wells=["D08"],
         chunks=(1, 2000, 2000),
     )
-    plate.attrs["plate"]["wells"] == [{"columnIndex": 7, "path": "D/08", "rowIndex": 3}]
+    assert plate.attrs["plate"]["wells"] == [
+        {"columnIndex": 7, "path": "D/08", "rowIndex": 3},
+        {"columnIndex": 2, "path": "E/03", "rowIndex": 4},
+        {"columnIndex": 7, "path": "F/08", "rowIndex": 5},
+    ]
     for well in ["D08"]:
         row, col = well[0], well[1:]
         path = join(tmp_dir, "plate_name.zarr", row, col, "0")
