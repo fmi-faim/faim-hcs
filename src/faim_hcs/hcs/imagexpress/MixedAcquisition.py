@@ -55,8 +55,9 @@ class MixedAcquisition(StackAcquisition):
         )
 
     def _parse_files(self) -> pd.DataFrame:
-        files = super()._parse_files()
-        return self._filter_mips(files)
+        files = self._filter_mips(super()._parse_files())
+        self._z_spacing = self._compute_z_spacing(files)
+        return files
 
     def _filter_mips(self, files: pd.DataFrame) -> pd.DataFrame:
         """Remove MIP files if the whole stack was acquired."""

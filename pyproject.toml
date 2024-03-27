@@ -1,10 +1,108 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
-    "setuptools_scm"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "faim-hcs"
+dynamic = ["version"]
+description = 'Tools used at FMI-FAIM to handle HCS data.'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "BSD-3-Clause"
+keywords = []
+authors = [
+  { name = "Tim-Oliver Buchholz", email = "tim-oliver.buchholz@fmi.ch" },
+  { name = "Jan Eglinger", email = "jan.eglinger@fmi.ch" },
 ]
-build-backend = "setuptools.build_meta"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "anndata>=0.8.0,<=0.9.2",
+  "dask",
+  "distributed",
+  "fsspec<=2023.6.0",
+  "imagecodecs",
+  "lxml",
+  "matplotlib",
+  "mobie@git+https://github.com/mobie/mobie-utils-python@0.4.5",
+  "numpy",
+  "ome-zarr",
+  "pandas",
+  "pint",
+  "pydantic==1.10.13",
+  "scikit-image>=0.20.0",
+  "threadpoolctl",
+  "tifffile",
+  "tqdm",
+  "zarr",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/fmi-faim/faim-hcs/issues"
+Documentation = "https://github.com/fmi-faim/faim-hcs#README.md"
+Homepage = "https://github.com/fmi-faim/faim-hcs.git"
+"Source Code" = "https://github.com/fmi-faim/faim-hcs"
+"User Support" = "https://github.com/fmi-faim/faim-hcs/issues"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+]
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "- coverage combine",
+  "coverage report",
+]
+cov = [
+  "test-cov",
+  "cov-report",
+]
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12"]
+
+[tool.hatch.envs.types]
+dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/faim_hcs tests}"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.coverage.run]
+source_pkgs = ["faim_hcs", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/faim_hcs/__about__.py",
+]
+
+[tool.coverage.paths]
+faim_hcs = ["src/faim_hcs", "*/faim-hcs/src/faim_hcs"]
+tests = ["tests", "*/faim-hcs/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
 
 [tool.setuptools_scm]
 write_to = "src/faim_hcs/_version.py"

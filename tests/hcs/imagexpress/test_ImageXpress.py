@@ -119,7 +119,7 @@ def test_stack_acquistion(stack_acquisition: PlateAcquisition):
     assert ch.spatial_calibration_x == 1.3668
     assert ch.spatial_calibration_y == 1.3668
     assert ch.wavelength == 536
-    assert_almost_equal(ch.z_spacing, 5.0, decimal=2)
+    assert_almost_equal(ch.z_spacing, 5.0, decimal=4)
 
     ch = channels[1]
     assert ch.channel_index == 1
@@ -132,7 +132,7 @@ def test_stack_acquistion(stack_acquisition: PlateAcquisition):
     assert ch.spatial_calibration_x == 1.3668
     assert ch.spatial_calibration_y == 1.3668
     assert ch.wavelength == 536
-    assert_almost_equal(ch.z_spacing, 5.0, decimal=2)
+    assert_almost_equal(ch.z_spacing, 5.0, decimal=4)
 
     ch = channels[3]
     assert ch.channel_index == 3
@@ -145,7 +145,7 @@ def test_stack_acquistion(stack_acquisition: PlateAcquisition):
     assert ch.spatial_calibration_x == 1.3668
     assert ch.spatial_calibration_y == 1.3668
     assert ch.wavelength == 536
-    assert_almost_equal(ch.z_spacing, 5.0, decimal=2)
+    assert_almost_equal(ch.z_spacing, 5.0, decimal=4)
 
     for well in stack_acquisition.get_well_acquisitions():
         assert isinstance(well, WellAcquisition)

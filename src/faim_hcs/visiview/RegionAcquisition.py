@@ -21,6 +21,7 @@ class RegionAcquisitionSTK(WellAcquisition):
         background_correction_matrices: Optional[dict[str, NDArray]],
         illumination_correction_matrices: Optional[dict[str, NDArray]],
         axes: list[str] = ["c", "z", "y", "x"],
+        *,
         memmap: bool = True,
     ):
         path = files.iloc[0]["path"]
