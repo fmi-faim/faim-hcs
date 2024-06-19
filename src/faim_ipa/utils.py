@@ -1,7 +1,11 @@
 import logging
+import pathlib
 from datetime import datetime
 import os.path
 from pathlib import Path
+
+import pydantic
+from pydantic import BaseModel
 
 
 def wavelength_to_rgb(wavelength, gamma=0.8):
@@ -134,3 +138,41 @@ def make_relative_to_git_root(path: Path) -> Path:
     except (ValueError, TypeError):
         # fallback for Python < 3.12
         return Path(os.path.relpath(path, git_root))
+
+
+class IPAConfig(BaseModel):
+
+    def make_paths_absolute(self):
+        """
+        Convert all `pathlib.Path` fields to absolute paths.
+
+        The paths are assumed to be relative to a git-root directory somewhere
+        in the parent directories of the class implementing `IPAConfig`.
+        """
+        if pydantic.__version__.startswith("2"):
+            fields = self.model_fields_set
+        else:
+            fields = self.__fields_set__
+
+        for f in fields:
+            attr = getattr(self, f)
+            if isinstance(attr, pathlib.Path) and not attr.is_absolute():
+                setattr(self, f, resolve_with_git_root(attr))
+
+    def make_paths_relative(self):
+        """
+        Convert all `pathlib.Path` fields to relative paths.
+
+        The resulting paths will be relative to the git-root directory
+        somewhere in the parent directories of the class implementing
+        `IPAConfig`.
+        """
+        if pydantic.__version__.startswith("2"):
+            fields = self.model_fields_set
+        else:
+            fields = self.__fields_set__
+
+        for f in fields:
+            attr = getattr(self, f)
+            if isinstance(attr, pathlib.Path) and attr.is_absolute():
+                setattr(self, f, make_relative_to_git_root(attr))
