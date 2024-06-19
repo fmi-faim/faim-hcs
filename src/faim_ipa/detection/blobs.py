@@ -43,7 +43,7 @@ def detect_blobs(
         blobs is greater than `overlap` the smaller blob is eliminated.
     background_img :
         Estimated background image. This is subtracted before the
-        blob-detection.
+        blob detection.
 
     Returns
     -------
