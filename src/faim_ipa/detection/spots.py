@@ -33,7 +33,7 @@ def detect_spots(
         h-maxima threshold.
     background_img :
         Estimated background image. This is subtracted before the
-        spot-detection.
+        spot detection.
 
     Returns
     -------
