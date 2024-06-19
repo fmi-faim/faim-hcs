@@ -2,7 +2,6 @@ import logging
 import pathlib
 from datetime import datetime
 import os.path
-from pathlib import Path
 
 import pydantic
 from pydantic import BaseModel
@@ -83,7 +82,7 @@ def create_logger(name: str) -> logging.Logger:
     return logger
 
 
-def get_git_root() -> Path:
+def get_git_root() -> pathlib.Path:
     """
     Recursively search for the directory containing the .git folder.
 
@@ -92,14 +91,14 @@ def get_git_root() -> Path:
     Path
         Path to the root of the git repository.
     """
-    parent_dir = Path(__file__).parent
+    parent_dir = pathlib.Path(__file__).parent
     while not (parent_dir / ".git").exists():
         parent_dir = parent_dir.parent
 
     return parent_dir
 
 
-def resolve_with_git_root(relative_path: Path) -> Path:
+def resolve_with_git_root(relative_path: pathlib.Path) -> pathlib.Path:
     """
     Takes a relative path and resolves it relative to the git_root directory.
 
@@ -117,7 +116,7 @@ def resolve_with_git_root(relative_path: Path) -> Path:
     return (git_root / relative_path).resolve()
 
 
-def make_relative_to_git_root(path: Path) -> Path:
+def make_relative_to_git_root(path: pathlib.Path) -> pathlib.Path:
     """
     Convert an absolute path to a path relative to the git_root directory.
 
@@ -128,7 +127,7 @@ def make_relative_to_git_root(path: Path) -> Path:
 
     Returns
     -------
-    Path
+    pathlib.Path
         Path relative to the git root.
     """
     git_root = get_git_root()
@@ -137,7 +136,7 @@ def make_relative_to_git_root(path: Path) -> Path:
         return path.relative_to(git_root, walk_up=True)
     except (ValueError, TypeError):
         # fallback for Python < 3.12
-        return Path(os.path.relpath(path, git_root))
+        return pathlib.Path(os.path.relpath(path, git_root))
 
 
 class IPAConfig(BaseModel):
