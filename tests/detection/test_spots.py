@@ -6,6 +6,7 @@ from faim_ipa.detection.spots import detect_spots
 
 
 def test_detect_spots():
+    np.random.seed(0)
     img = np.zeros((101, 101, 101), dtype=np.float32)
 
     # Create 3 spots with intensities of 100, 200, 300

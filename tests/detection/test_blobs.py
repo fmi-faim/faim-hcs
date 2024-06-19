@@ -6,6 +6,7 @@ from faim_ipa.detection.blobs import detect_blobs
 
 
 def test_detect_blobs():
+    np.random.seed(0)
     img = np.zeros((101, 101, 101), dtype=np.float32)
 
     # Create 3 spots with intensities of 100, 200, 300
