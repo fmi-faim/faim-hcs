@@ -106,7 +106,7 @@ def get_channels(metadata: lxml.etree.ElementTree) -> dict[str, ChannelMetadata]
             wavelength = int(channel["EmissionWavelength"])
             display_color = rgb_to_hex(*wavelength_to_rgb(wavelength))
         else:
-            wavelength = channel["Name"]
+            wavelength = None
             display_color = "#ffffff"
         ch_metadata[f"w{idx+1}"] = ChannelMetadata(
             channel_index=idx,
